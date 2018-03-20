@@ -42,7 +42,12 @@ dmp.drive.listFiles = function(folderId, callback, retryCounter, items, folders)
       folders = [];
   }
   gapi.client.load('drive', 'v2', function() {
-    gapi.client.drive.files.list({'q': "'"+folderId+"' in parents and trashed=false",'fields':'items(id, mimeType)'}).execute(function(resp){
+    var accessTokenObj = {};
+    accessTokenObj.access_token = dmp.auth.accessToken;
+    accessTokenObj.token_type = "Bearer";
+    accessTokenObj.expires_in = "3600";
+    gapi.auth.setToken(accessTokenObj);
+    gapi.client.drive.files.list({'q': "'"+folderId+"' in parents or sharedWithMe and trashed=false",'fields':'items(id, mimeType)'}).execute(function(resp){
       // We got an error object back so we can check it out.
       if (resp && resp.error) {
         console.log("Error while listing files: ", resp.error);
@@ -50,7 +55,9 @@ dmp.drive.listFiles = function(folderId, callback, retryCounter, items, folders)
         if (resp.error.code == 401
             && resp.error.data[0].reason == "authError"
             && (retryCounter ? retryCounter == 0 : true)) {
-          console.log("You have been signed out from your Google Account.");
+          dmp.auth.autoRefreshAuth(function() {
+            dmp.drive.listFiles(folderId, callback, 1, items, folders);
+          });
         // For any other errors we retry once.
         } else if (!retryCounter || retryCounter == 0) {
           dmp.drive.listFiles(folderId, callback, 1, items, folders);
@@ -100,6 +107,11 @@ dmp.drive.listFiles = function(folderId, callback, retryCounter, items, folders)
  */
 dmp.drive.getFileUrl = function(fileId, callback, retryCounter) {
   gapi.client.load('drive', 'v2', function() {
+    var accessTokenObj = {};
+    accessTokenObj.access_token = dmp.auth.accessToken;
+    accessTokenObj.token_type = "Bearer";
+    accessTokenObj.expires_in = "3600";
+    gapi.auth.setToken(accessTokenObj);
     gapi.client.drive.files.get({'fileId': fileId}).execute(function(resp){
       // We got an error object back so we can check it out.
       if (resp && resp.error) {
@@ -109,7 +121,9 @@ dmp.drive.getFileUrl = function(fileId, callback, retryCounter) {
         if (resp.error.code == 401
             && resp.error.data[0].reason == "authError"
             && (retryCounter ? retryCounter == 0 : true)) {
-          console.log("You have been signed out from your Google Account.");
+          dmp.auth.autoRefreshAuth(function() {
+            dmp.drive.getFileUrl(fileId, callback, 1);
+          });
         // For any other errors we retry once.
         } else if (!retryCounter || retryCounter == 0) {
           dmp.drive.getFileUrl(fileId, callback, 1);
@@ -121,7 +135,7 @@ dmp.drive.getFileUrl = function(fileId, callback, retryCounter) {
       } else if (resp && resp.title) {
         console.log("Got the File's URL: ", resp.downloadUrl);
         var authedCallbackUrl = resp.downloadUrl + "&access_token="
-            + encodeURIComponent(dmp.getAccessToken());
+            + encodeURIComponent(dmp.auth.accessToken);
         console.log("File's URL w/ auth: ", authedCallbackUrl);
         console.log("File's Data: ", resp);
         callback(authedCallbackUrl,
@@ -131,7 +145,7 @@ dmp.drive.getFileUrl = function(fileId, callback, retryCounter) {
             resp.mimeType == dmp.drive.FOLDER_MIME_TYPE,
             resp.thumbnailLink,
             resp.md5Checksum,
-            resp.mimeType == (dmp.playlist.PLAYLIST_MIME_TYPE + "." + dmp.APPLICATION_ID),
+            resp.mimeType == (dmp.playlist.PLAYLIST_MIME_TYPE + "." + dmp.auth.APPLICATION_ID),
             resp.mimeType);
       // The return object has no title, maybe it;s an error so we retry.
       } else if (!retryCounter || retryCounter == 0){
@@ -146,6 +160,11 @@ dmp.drive.getFileUrl = function(fileId, callback, retryCounter) {
 
 dmp.drive.aboutGet = function(callback, retryCounter) {
   gapi.client.load('drive', 'v2', function() {
+    var accessTokenObj = {};
+    accessTokenObj.access_token = dmp.auth.accessToken;
+    accessTokenObj.token_type = "Bearer";
+    accessTokenObj.expires_in = "3600";
+    gapi.auth.setToken(accessTokenObj);
     gapi.client.drive.about.get({'fields': "user/emailAddress"}).execute(function(resp){
       // We got an error object back so we can check it out.
       if (resp && resp.error) {
@@ -154,7 +173,9 @@ dmp.drive.aboutGet = function(callback, retryCounter) {
         if (resp.error.code == 401
             && resp.error.data[0].reason == "authError"
             && (retryCounter ? retryCounter == 0 : true)) {
-          console.log("You have been signed out from your Google Account.");
+          dmp.auth.autoRefreshAuth(function() {
+            dmp.drive.aboutGet(callback, 1);
+          });
         // For any other errors we retry once.
         } else if (!retryCounter || retryCounter == 0) {
           dmp.drive.aboutGet(callback, 1);
@@ -182,6 +203,11 @@ dmp.drive.uploadThumbnailFromUrl = function(fileId, albumUrl) {
 
   // Saving Thumb URL to properties because it can't be saved as base 64 due to XHR issues.
   gapi.client.load('drive', 'v2', function() {
+    var accessTokenObj = {};
+    accessTokenObj.access_token = dmp.auth.accessToken;
+    accessTokenObj.token_type = "Bearer";
+    accessTokenObj.expires_in = "3600";
+    gapi.auth.setToken(accessTokenObj);
     var body = {
       'key' : 'albumCoverUrl',
       'value' : albumUrl,
@@ -233,6 +259,11 @@ function getBase64FromImTag(img) {
 
 dmp.drive.uploadThumbnail = function(fileId, mimetype, base64Pic, retry){
   gapi.client.load('drive', 'v2', function() {
+    var accessTokenObj = new Object();
+    accessTokenObj.access_token = dmp.auth.accessToken;
+    accessTokenObj.token_type = "Bearer";
+    accessTokenObj.expires_in = "3600";
+    gapi.auth.setToken(accessTokenObj);
     var urlSafeBase64Image =  dmp.drive.base64toBase64Url(base64Pic);
     var body = {'thumbnail': {'image': urlSafeBase64Image, 'mimeType': mimetype}};
     gapi.client.drive.files.patch({'fileId': fileId, 'resource': body}).execute(function(resp){
@@ -251,6 +282,11 @@ dmp.drive.base64toBase64Url = function(base64) {
 
 dmp.drive.saveTagsInProperty = function(fileId, title, artist, md5) {
   gapi.client.load('drive', 'v2', function() {
+    var accessTokenObj = {};
+    accessTokenObj.access_token = dmp.auth.accessToken;
+    accessTokenObj.token_type = "Bearer";
+    accessTokenObj.expires_in = "3600";
+    gapi.auth.setToken(accessTokenObj);
     var body = {
       'key' : 'md5',
       'value' : md5,
@@ -303,6 +339,11 @@ dmp.drive.saveTagsInProperty = function(fileId, title, artist, md5) {
 
 dmp.drive.readTagsFromProperty = function(fileId, callback) {
   gapi.client.load('drive', 'v2', function() {
+    var accessTokenObj = new Object();
+    accessTokenObj.access_token = dmp.auth.accessToken;
+    accessTokenObj.token_type = "Bearer";
+    accessTokenObj.expires_in = "3600";
+    gapi.auth.setToken(accessTokenObj);
     var request = gapi.client.drive.properties.list({
       'fileId' : fileId
     });
