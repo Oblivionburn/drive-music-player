@@ -96,7 +96,7 @@ dmp.playlist.loadPlaylist = function(file) {
  */
 dmp.playlist.handleErrors = function(e) {
   if(e.type == gapi.drive.realtime.ErrorType.TOKEN_REFRESH_REQUIRED) {
-    console.log("You have been signed out from your Google Account.");
+    dmp.auth.autoRefreshAuth();
   } else if(e.type == gapi.drive.realtime.ErrorType.NOT_FOUND) {
     alert("The file was not found. It does not exist or you do not have read access to the file.");
   } else {

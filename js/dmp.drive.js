@@ -47,7 +47,7 @@ dmp.drive.listFiles = function(folderId, callback, retryCounter, items, folders)
     accessTokenObj.token_type = "Bearer";
     accessTokenObj.expires_in = "3600";
     gapi.auth.setToken(accessTokenObj);
-    gapi.client.drive.files.list({'q': "'"+folderId+"' in parents or sharedWithMe and trashed=false",'fields':'items(id, mimeType)'}).execute(function(resp){
+    gapi.client.drive.files.list({'q': "'"+folderId+"' in parents and trashed=false",'fields':'items(id, mimeType)'}).execute(function(resp){
       // We got an error object back so we can check it out.
       if (resp && resp.error) {
         console.log("Error while listing files: ", resp.error);
